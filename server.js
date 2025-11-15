@@ -1,17 +1,10 @@
 const express = require('express');
 const session = require('express-session');
-const FileStore = require('session-file-store')(session);
 const path = require('path');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 
 const app = express();
-
-// Create sessions directory if it doesn't exist
-const sessionsDir = './sessions';
-if (!fs.existsSync(sessionsDir)) {
-    fs.mkdirSync(sessionsDir, { recursive: true });
-}
 
 // Middleware
 app.set('view engine', 'ejs');
@@ -20,23 +13,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Session configuration with FileStore for production
+// Trust proxy for secure cookies in production
+app.set('trust proxy', 1);
+
+// Session configuration - using MemoryStore with proper settings for Render
 app.use(session({
-    store: new FileStore({
-        path: sessionsDir,
-        ttl: 86400, // 24 hours in seconds
-        retries: 2,
-        logFn: function() {} // Suppress file store logs
-    }),
-    secret: process.env.SESSION_SECRET || 'music-app-secret-key-2025',
-    resave: false,
+    secret: process.env.SESSION_SECRET || 'music-app-secret-key-2025-comps381f-render-fix',
+    resave: true, // Changed to true to force save on every request
     saveUninitialized: false,
     cookie: { 
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        httpOnly: true
+        httpOnly: true,
+        sameSite: 'lax'
     }
 }));
+
+// Session debugging middleware
+app.use((req, res, next) => {
+    console.log('=== Session Debug ===');
+    console.log('Session ID:', req.sessionID);
+    console.log('Session data:', JSON.stringify(req.session));
+    console.log('=====================');
+    next();
+});
 
 // In-memory database (for demo purposes)
 let users = [
@@ -111,10 +111,13 @@ let votes = [
 
 // Authentication Middleware
 const requireAuth = (req, res, next) => {
-    console.log('Auth check - Session:', req.session);
-    console.log('Auth check - User ID:', req.session.userId);
+    console.log('=== Auth Middleware ===');
+    console.log('Session ID:', req.sessionID);
+    console.log('User ID in session:', req.session.userId);
+    console.log('Full session:', req.session);
     
     if (req.session.userId) {
+        console.log('User authenticated, proceeding...');
         next();
     } else {
         console.log('No user ID in session, redirecting to login');
@@ -130,7 +133,7 @@ app.get('/debug-session', (req, res) => {
     res.json({
         session: req.session,
         sessionId: req.sessionID,
-        sessionStore: req.sessionStore?.constructor?.name || 'Unknown'
+        headers: req.headers
     });
 });
 
@@ -145,8 +148,14 @@ app.get('/debug-users', (req, res) => {
 app.get('/test-login', (req, res) => {
     req.session.userId = '1';
     req.session.username = 'user1';
-    console.log('Test login - Session set:', req.session);
-    res.redirect('/dashboard');
+    req.session.save((err) => {
+        if (err) {
+            console.error('Test login session save error:', err);
+            return res.status(500).send('Session save failed');
+        }
+        console.log('Test login - Session saved:', req.session);
+        res.redirect('/dashboard');
+    });
 });
 
 // Reset demo data
@@ -194,6 +203,7 @@ app.get('/reset-demo', (req, res) => {
 
 // Root route - redirect to login or dashboard
 app.get('/', (req, res) => {
+    console.log('Root route - Session userId:', req.session.userId);
     if (req.session.userId) {
         res.redirect('/dashboard');
     } else {
@@ -209,6 +219,7 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     console.log('Login attempt - Body:', { username, password });
+    console.log('Current session before login:', req.session);
     
     try {
         const user = users.find(u => u.username === username && u.password === password);
@@ -216,8 +227,17 @@ app.post('/login', (req, res) => {
             console.log('User found:', user);
             req.session.userId = user.id;
             req.session.username = user.username;
-            console.log('Login successful - Session set:', req.session);
-            res.redirect('/dashboard');
+            
+            // Explicitly save the session
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error during login:', err);
+                    return res.render('login', { error: 'Login failed. Please try again.' });
+                }
+                console.log('Login successful - Session saved:', req.session);
+                console.log('Session after save:', req.session);
+                res.redirect('/dashboard');
+            });
         } else {
             console.log('User not found or password incorrect');
             res.render('login', { error: 'Invalid username or password' });
@@ -240,7 +260,7 @@ app.post('/logout', (req, res) => {
 
 // Dashboard
 app.get('/dashboard', requireAuth, (req, res) => {
-    console.log('Dashboard access attempt - Session:', req.session);
+    console.log('Dashboard access - Session:', req.session);
     const userVote = votes.find(v => v.userId === req.session.userId);
     res.render('dashboard', { 
         musicCount: music.length, 
@@ -557,7 +577,11 @@ app.get('/health', (req, res) => {
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         environment: process.env.NODE_ENV || 'development',
-        sessionStore: req.sessionStore?.constructor?.name || 'Unknown'
+        session: {
+            id: req.sessionID,
+            userId: req.session.userId,
+            username: req.session.username
+        }
     });
 });
 
@@ -595,7 +619,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port: ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Access URL: http://0.0.0.0:${PORT}`);
-    console.log(`Session Store: ${app.sessionStore?.constructor?.name || 'Unknown'}`);
+    console.log(`Session Config: resave=true, saveUninitialized=false`);
     console.log(`=== Demo Accounts ===`);
     console.log(`Username: user1 | Password: password123`);
     console.log(`Username: user2 | Password: password123`);
