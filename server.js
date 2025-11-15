@@ -3,8 +3,15 @@ const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 const path = require('path');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 
 const app = express();
+
+// Create sessions directory if it doesn't exist
+const sessionsDir = './sessions';
+if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir, { recursive: true });
+}
 
 // Middleware
 app.set('view engine', 'ejs');
@@ -16,9 +23,10 @@ app.use(bodyParser.json());
 // Session configuration with FileStore for production
 app.use(session({
     store: new FileStore({
-        path: './sessions',
+        path: sessionsDir,
         ttl: 86400, // 24 hours in seconds
-        retries: 2
+        retries: 2,
+        logFn: function() {} // Suppress file store logs
     }),
     secret: process.env.SESSION_SECRET || 'music-app-secret-key-2025',
     resave: false,
@@ -121,7 +129,8 @@ const generateId = () => Date.now().toString() + Math.random().toString(36).subs
 app.get('/debug-session', (req, res) => {
     res.json({
         session: req.session,
-        sessionId: req.sessionID
+        sessionId: req.sessionID,
+        sessionStore: req.sessionStore?.constructor?.name || 'Unknown'
     });
 });
 
@@ -136,6 +145,7 @@ app.get('/debug-users', (req, res) => {
 app.get('/test-login', (req, res) => {
     req.session.userId = '1';
     req.session.username = 'user1';
+    console.log('Test login - Session set:', req.session);
     res.redirect('/dashboard');
 });
 
@@ -546,7 +556,8 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        sessionStore: req.sessionStore?.constructor?.name || 'Unknown'
     });
 });
 
@@ -584,6 +595,7 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port: ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Access URL: http://0.0.0.0:${PORT}`);
+    console.log(`Session Store: ${app.sessionStore?.constructor?.name || 'Unknown'}`);
     console.log(`=== Demo Accounts ===`);
     console.log(`Username: user1 | Password: password123`);
     console.log(`Username: user2 | Password: password123`);
