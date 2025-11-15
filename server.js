@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const path = require('path');
 const bodyParser = require('body-parser');
 
@@ -12,14 +13,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Session configuration - important for cloud deployment
+// Session configuration with FileStore for production
 app.use(session({
+    store: new FileStore({
+        path: './sessions',
+        ttl: 86400, // 24 hours in seconds
+        retries: 2
+    }),
     secret: process.env.SESSION_SECRET || 'music-app-secret-key-2025',
     resave: false,
     saveUninitialized: false,
     cookie: { 
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true
     }
 }));
 
@@ -96,15 +103,82 @@ let votes = [
 
 // Authentication Middleware
 const requireAuth = (req, res, next) => {
+    console.log('Auth check - Session:', req.session);
+    console.log('Auth check - User ID:', req.session.userId);
+    
     if (req.session.userId) {
         next();
     } else {
+        console.log('No user ID in session, redirecting to login');
         res.redirect('/login');
     }
 };
 
 // Helper function to generate IDs
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+// Debug routes for session testing
+app.get('/debug-session', (req, res) => {
+    res.json({
+        session: req.session,
+        sessionId: req.sessionID
+    });
+});
+
+app.get('/debug-users', (req, res) => {
+    res.json({
+        users: users,
+        currentUser: req.session.userId ? users.find(u => u.id === req.session.userId) : null
+    });
+});
+
+// Test login route for debugging
+app.get('/test-login', (req, res) => {
+    req.session.userId = '1';
+    req.session.username = 'user1';
+    res.redirect('/dashboard');
+});
+
+// Reset demo data
+app.get('/reset-demo', (req, res) => {
+    // Reset to original demo data
+    music = [
+        {
+            id: '1',
+            title: 'Moonlight Sonata',
+            artist: 'Ludwig van Beethoven',
+            chords: ['Cm', 'G', 'Dm', 'Am'],
+            notes: 'Classic piano piece with emotional depth and technical challenges',
+            difficulty: 'Advanced',
+            style: 'Classical',
+            bpm: 60,
+            createdAt: new Date('2024-01-15')
+        },
+        {
+            id: '2',
+            title: 'Sweet Child O\' Mine',
+            artist: 'Guns N\' Roses',
+            chords: ['D', 'C', 'G', 'D'],
+            notes: 'Iconic rock ballad with memorable guitar riff',
+            difficulty: 'Intermediate',
+            style: 'Rock',
+            bpm: 125,
+            createdAt: new Date('2024-01-16')
+        },
+        {
+            id: '3',
+            title: 'Autumn Leaves',
+            artist: 'Joseph Kosma',
+            chords: ['Cm', 'Fm', 'Bb', 'Eb'],
+            notes: 'Jazz standard perfect for improvisation practice',
+            difficulty: 'Intermediate',
+            style: 'Jazz',
+            bpm: 120,
+            createdAt: new Date('2024-01-17')
+        }
+    ];
+    res.redirect('/music');
+});
 
 // Routes
 
@@ -124,14 +198,18 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
+    console.log('Login attempt - Body:', { username, password });
     
     try {
         const user = users.find(u => u.username === username && u.password === password);
         if (user) {
+            console.log('User found:', user);
             req.session.userId = user.id;
             req.session.username = user.username;
+            console.log('Login successful - Session set:', req.session);
             res.redirect('/dashboard');
         } else {
+            console.log('User not found or password incorrect');
             res.render('login', { error: 'Invalid username or password' });
         }
     } catch (error) {
@@ -152,6 +230,7 @@ app.post('/logout', (req, res) => {
 
 // Dashboard
 app.get('/dashboard', requireAuth, (req, res) => {
+    console.log('Dashboard access attempt - Session:', req.session);
     const userVote = votes.find(v => v.userId === req.session.userId);
     res.render('dashboard', { 
         musicCount: music.length, 
@@ -466,7 +545,18 @@ app.get('/health', (req, res) => {
         status: 'OK',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        memory: process.memoryUsage()
+        memory: process.memoryUsage(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
+// Check current data
+app.get('/check-data', (req, res) => {
+    res.json({
+        users: users,
+        music: music,
+        votes: votes,
+        session: req.session
     });
 });
 
@@ -489,13 +579,20 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`🎵 Music CRUD App Server Started`);
-    console.log(`📍 Local: http://localhost:${PORT}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔑 Demo Accounts:`);
-    console.log(`   Username: user1 | Password: password123`);
-    console.log(`   Username: user2 | Password: password123`);
-    console.log(`💾 Storage: In-memory (${music.length} sample music pieces loaded)`);
-    console.log(`✅ Server ready for cloud deployment`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`=== Music CRUD App Server Started ===`);
+    console.log(`Server running on port: ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Access URL: http://0.0.0.0:${PORT}`);
+    console.log(`=== Demo Accounts ===`);
+    console.log(`Username: user1 | Password: password123`);
+    console.log(`Username: user2 | Password: password123`);
+    console.log(`=== Debug Routes ===`);
+    console.log(`/health - Server health check`);
+    console.log(`/check-data - Check current data`);
+    console.log(`/debug-session - Check current session`);
+    console.log(`/debug-users - Check users data`);
+    console.log(`/test-login - Test login (auto login as user1)`);
+    console.log(`/reset-demo - Reset to demo data`);
+    console.log(`=================================`);
 });
