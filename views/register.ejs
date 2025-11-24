@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Music CRUD App</title>
+    <title>Register - Music CRUD App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -33,7 +33,8 @@
             font-weight: bold;
         }
         input[type="text"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="email"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -61,53 +62,33 @@
             margin-bottom: 20px;
             border: 1px solid #f5c6cb;
         }
-        .demo-accounts {
-            background-color: #e7f3ff;
-            padding: 15px;
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
             border-radius: 4px;
-            margin: 20px 0;
-            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
         }
-        .demo-accounts h3 {
-            margin-top: 0;
-            color: #0056b3;
-        }
-        .demo-accounts ul {
-            margin-bottom: 0;
-            padding-left: 20px;
-        }
-        .register-link {
+        .login-link {
             text-align: center;
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .register-link a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        .register-link a:hover {
-            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Login</h1>
+        <h1>Register</h1>
         
         <% if (error) { %>
             <div class="error"><%= error %></div>
         <% } %>
-
-        <div class="demo-accounts">
-            <h3>Demo Accounts:</h3>
-            <ul>
-                <li>Username: user1 | Password: password123</li>
-                <li>Username: user2 | Password: password123</li>
-            </ul>
-        </div>
         
-        <form action="/login" method="POST">
+        <% if (success) { %>
+            <div class="success"><%= success %></div>
+        <% } %>
+        
+        <form action="/register" method="POST">
             <div class="form-group">
                 <label for="username">Username:</label>
                 <input type="text" id="username" name="username" required 
@@ -115,15 +96,28 @@
             </div>
             
             <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required
+                       value="<%= typeof email !== 'undefined' ? email : '' %>">
             </div>
             
-            <button type="submit">Login</button>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required 
+                       minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required 
+                       minlength="6">
+            </div>
+            
+            <button type="submit">Register</button>
         </form>
         
-        <div class="register-link">
-            <p>Don't have an account? <a href="/register">Register here</a></p>
+        <div class="login-link">
+            <p>Already have an account? <a href="/login">Login here</a></p>
         </div>
     </div>
 </body>

@@ -1,51 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Music List - Music App</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music List - Music CRUD App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .add-btn {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .add-btn:hover {
+            background-color: #218838;
+        }
+        .music-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .music-table th,
+        .music-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .music-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .music-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .edit-btn {
+            padding: 6px 12px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .delete-btn {
+            padding: 6px 12px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .edit-btn:hover {
+            background-color: #0056b3;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        .nav-links {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .nav-links a:hover {
+            background-color: #545b62;
+        }
+        .chords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .chord-tag {
+            background-color: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Music Collection</h1>
-        <nav>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/music/add">Add New Music</a>
-            <form method="POST" action="/logout" class="logout-form">
-                <button type="submit">Logout</button>
-            </form>
-        </nav>
-    </header>
+    <div class="container">
+        <div class="header-bar">
+            <h1>Music Collection</h1>
+            <a href="/music/add" class="add-btn">+ Add New Music</a>
+        </div>
 
-    <main>
-        <table class="music-table">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Artist</th>
-                    <th>Style</th>
-                    <th>Difficulty</th>
-                    <th>BPM</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% music.forEach(item => { %>
-                <tr>
-                    <td><%= item.title %></td>
-                    <td><%= item.artist %></td>
-                    <td><%= item.style %></td>
-                    <td><%= item.difficulty %></td>
-                    <td><%= item.bpm %></td>
-                    <td class="actions">
-                        <a href="/music/edit/<%= item._id %>" class="btn edit">Edit</a>
-                        <form method="POST" action="/music/delete/<%= item._id %>" class="delete-form">
-                            <button type="submit" class="btn delete">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                <% }); %>
-            </tbody>
-        </table>
-    </main>
+        <p>Welcome, <strong><%= username %></strong>! Manage your music collection below.</p>
+
+        <% if (music.length === 0) { %>
+            <div style="text-align: center; padding: 40px;">
+                <p>No music pieces found.</p>
+                <a href="/music/add" class="add-btn">Add Your First Music Piece</a>
+            </div>
+        <% } else { %>
+            <table class="music-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Artist</th>
+                        <th>Chords</th>
+                        <th>Difficulty</th>
+                        <th>Style</th>
+                        <th>BPM</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% music.forEach(function(musicItem) { %>
+                    <tr>
+                        <td><strong><%= musicItem.title %></strong></td>
+                        <td><%= musicItem.artist %></td>
+                        <td>
+                            <div class="chords-list">
+                                <% musicItem.chords.forEach(function(chord) { %>
+                                    <span class="chord-tag"><%= chord %></span>
+                                <% }); %>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                                font-size: 12px;
+                                <% if (musicItem.difficulty === 'Beginner') { %>
+                                    background-color: #d4edda; color: #155724;
+                                <% } else if (musicItem.difficulty === 'Intermediate') { %>
+                                    background-color: #fff3cd; color: #856404;
+                                <% } else { %>
+                                    background-color: #f8d7da; color: #721c24;
+                                <% } %>
+                            ">
+                                <%= musicItem.difficulty %>
+                            </span>
+                        </td>
+                        <td><%= musicItem.style %></td>
+                        <td><%= musicItem.bpm %></td>
+                        <td>
+                            <div class="action-buttons">
+                                <!-- Edit button as a link -->
+                                <a href="/music/edit/<%= musicItem.id %>" class="edit-btn">Edit</a>
+                                
+                                <!-- Delete button as a form -->
+                                <form action="/music/delete/<%= musicItem.id %>" method="POST" style="display: inline;">
+                                    <button type="submit" class="delete-btn" 
+                                            onclick="return confirm('Are you sure you want to delete <%= musicItem.title %>?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        <% } %>
+
+        <div class="nav-links">
+            <a href="/dashboard">Back to Dashboard</a>
+            <a href="/">Home</a>
+        </div>
+    </div>
+
+    <script>
+        // Confirm before deleting
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteForms = document.querySelectorAll('form[action*="/music/delete/"]');
+            deleteForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const musicTitle = this.closest('tr').querySelector('td:first-child strong').textContent;
+                    if (!confirm(`Are you sure you want to delete "${musicTitle}"?`)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

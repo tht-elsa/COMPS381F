@@ -94,6 +94,7 @@ let votes = [
     {
         id: '1',
         userId: '1',
+        username: 'user1', // Added username
         favoriteInstrument: 'Guitar',
         favoriteStyle: 'Rock',
         difficultyPreference: 'Medium',
@@ -102,6 +103,7 @@ let votes = [
     {
         id: '2',
         userId: '2',
+        username: 'user2', // Added username
         favoriteInstrument: 'Piano',
         favoriteStyle: 'Classical',
         difficultyPreference: 'Hard',
@@ -245,6 +247,82 @@ app.post('/login', (req, res) => {
     } catch (error) {
         console.error('Login error:', error);
         res.render('login', { error: 'Login failed. Please try again.' });
+    }
+});
+
+// Register Page
+app.get('/register', (req, res) => {
+    res.render('register', { error: null, success: null });
+});
+
+app.post('/register', (req, res) => {
+    const { username, password, email, confirmPassword } = req.body;
+    console.log('Registration attempt - Body:', { username, email });
+    
+    try {
+        // Validation checks
+        if (!username || !password || !email) {
+            return res.render('register', { 
+                error: 'All fields are required',
+                success: null 
+            });
+        }
+        
+        if (password !== confirmPassword) {
+            return res.render('register', { 
+                error: 'Passwords do not match',
+                success: null 
+            });
+        }
+        
+        if (password.length < 6) {
+            return res.render('register', { 
+                error: 'Password must be at least 6 characters long',
+                success: null 
+            });
+        }
+        
+        // Check if username already exists
+        const existingUser = users.find(u => u.username === username);
+        if (existingUser) {
+            return res.render('register', { 
+                error: 'Username already exists',
+                success: null 
+            });
+        }
+        
+        // Check if email already exists
+        const existingEmail = users.find(u => u.email === email);
+        if (existingEmail) {
+            return res.render('register', { 
+                error: 'Email already registered',
+                success: null 
+            });
+        }
+        
+        // Create new user
+        const newUser = {
+            id: generateId(),
+            username: username.trim(),
+            password: password, // In real app, you should hash this!
+            email: email.trim(),
+            createdAt: new Date()
+        };
+        
+        users.push(newUser);
+        console.log('New user registered:', newUser);
+        
+        res.render('register', { 
+            error: null,
+            success: 'Registration successful! You can now login.' 
+        });
+        
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.render('register', { 
+            error: 'Registration failed. Please try again.',
+            success: null 
+        });
     }
 });
 
@@ -414,6 +492,7 @@ app.post('/vote', requireAuth, (req, res) => {
                 favoriteInstrument,
                 favoriteStyle,
                 difficultyPreference,
+                username: req.session.username, // Store username
                 votedAt: new Date()
             };
         } else {
@@ -421,6 +500,7 @@ app.post('/vote', requireAuth, (req, res) => {
             const newVote = {
                 id: generateId(),
                 userId: req.session.userId,
+                username: req.session.username, // Store username
                 favoriteInstrument,
                 favoriteStyle,
                 difficultyPreference,

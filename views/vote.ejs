@@ -3,85 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voting System - Music App</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Voting - Music CRUD App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .vote-form, .vote-results {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .vote-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .user-vote {
+            background-color: #e7f3ff;
+            border-left-color: #28a745;
+        }
+        .nav-links {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .nav-links a:hover {
+            background-color: #545b62;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
 <body>
-    <header>
+    <div class="container">
         <h1>Music Preferences Voting</h1>
-        <nav>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/music">Music List</a>
-            <form method="POST" action="/logout" class="logout-form">
-                <button type="submit">Logout</button>
-            </form>
-        </nav>
-    </header>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="error"><%= error %></div>
+        <% } %>
 
-    <main>
         <div class="vote-form">
             <h2>Cast Your Vote</h2>
-            <p>Share your music preferences with us!</p>
-            
-            <form method="POST" action="/vote">
+            <form action="/vote" method="POST">
                 <div class="form-group">
                     <label for="favoriteInstrument">Favorite Instrument:</label>
                     <select id="favoriteInstrument" name="favoriteInstrument" required>
-                        <option value="">Select Instrument</option>
-                        <option value="Piano">Piano</option>
+                        <option value="">Select an instrument</option>
                         <option value="Guitar">Guitar</option>
+                        <option value="Piano">Piano</option>
                         <option value="Violin">Violin</option>
                         <option value="Drums">Drums</option>
                         <option value="Bass">Bass</option>
-                        <option value="Saxophone">Saxophone</option>
                         <option value="Vocals">Vocals</option>
+                        <option value="Saxophone">Saxophone</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="favoriteStyle">Favorite Music Style:</label>
                     <select id="favoriteStyle" name="favoriteStyle" required>
-                        <option value="">Select Style</option>
+                        <option value="">Select a style</option>
+                        <option value="Rock">Rock</option>
                         <option value="Classical">Classical</option>
                         <option value="Jazz">Jazz</option>
-                        <option value="Rock">Rock</option>
                         <option value="Pop">Pop</option>
                         <option value="Blues">Blues</option>
                         <option value="Electronic">Electronic</option>
-                        <option value="Hip-Hop">Hip-Hop</option>
+                        <option value="Hip Hop">Hip Hop</option>
+                        <option value="Country">Country</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="difficultyPreference">Preferred Difficulty Level:</label>
                     <select id="difficultyPreference" name="difficultyPreference" required>
-                        <option value="">Select Difficulty</option>
+                        <option value="">Select difficulty</option>
                         <option value="Easy">Easy</option>
                         <option value="Medium">Medium</option>
                         <option value="Hard">Hard</option>
                     </select>
                 </div>
-                
-                <button type="submit" class="submit-btn">Submit Vote</button>
+
+                <button type="submit">Submit Vote</button>
             </form>
         </div>
 
         <div class="vote-results">
             <h2>Voting Results</h2>
+            
             <% if (votes.length === 0) { %>
                 <p>No votes yet. Be the first to vote!</p>
             <% } else { %>
-                <% votes.forEach(vote => { %>
-                    <div class="vote-item">
-                        <h3>Vote from User: <%= vote.userId %></h3>
+                <% votes.forEach(function(vote) { %>
+                    <div class="vote-item <%= vote.userId === userVote?.userId ? 'user-vote' : '' %>">
+                        <h4>Vote from User: <%= vote.username || 'Unknown User' %></h4>
                         <p><strong>Favorite Instrument:</strong> <%= vote.favoriteInstrument %></p>
                         <p><strong>Favorite Style:</strong> <%= vote.favoriteStyle %></p>
-                        <p><strong>Preferred Difficulty:</strong> <%= vote.difficultyPreference %></p>
+                        <p><strong>Difficulty Preference:</strong> <%= vote.difficultyPreference %></p>
                         <p><strong>Voted at:</strong> <%= new Date(vote.votedAt).toLocaleString() %></p>
                     </div>
                 <% }); %>
             <% } %>
         </div>
-    </main>
+
+        <div class="nav-links">
+            <a href="/dashboard">Back to Dashboard</a>
+            <a href="/music">Manage Music</a>
+            <a href="/">Home</a>
+        </div>
+    </div>
+
+    <script>
+        // Pre-fill form with existing vote if available
+        document.addEventListener('DOMContentLoaded', function() {
+            const userVote = <%= JSON.stringify(userVote) %>;
+            if (userVote) {
+                document.getElementById('favoriteInstrument').value = userVote.favoriteInstrument || '';
+                document.getElementById('favoriteStyle').value = userVote.favoriteStyle || '';
+                document.getElementById('difficultyPreference').value = userVote.difficultyPreference || '';
+            }
+        });
+    </script>
 </body>
 </html>
